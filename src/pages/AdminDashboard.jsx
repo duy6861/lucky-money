@@ -1,5 +1,5 @@
 // client/src/pages/AdminDashboard.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../utils/api';
 
@@ -8,19 +8,8 @@ export default function AdminDashboard() {
   const [draws, setDraws] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  // Kiểm tra token khi vào
-  useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      navigate('/admin/login');
-      return;
-    }
-
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  // 👇 Bọc loadData trong useCallback để tránh re-create mỗi render
+  const loadData = useCallback(async () => {
     try {
       const [summaryRes, drawsRes] = await Promise.all([
         adminApi.getSummary(),
@@ -29,7 +18,6 @@ export default function AdminDashboard() {
       setSummary(summaryRes.data);
       setDraws(drawsRes.data);
     } catch (err) {
-      // Nếu lỗi 401 → token hết hạn hoặc sai
       if (err.response?.status === 401) {
         localStorage.removeItem('adminToken');
         navigate('/admin/login');
@@ -39,7 +27,20 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]); // ← navigate là dependency hợp lệ
+
+  // Kiểm tra token khi vào
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
+
+    loadData(); // gọi hàm đã được memoize
+  }, [loadData, navigate]); // ← cả hai đều đã ổn định nhờ useCallback
+
+  // loadData is already defined above with useCallback; remove duplicate declaration to avoid redeclaration.
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
