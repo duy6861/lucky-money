@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE = process.env.REACT_APP_API_URL
 // API cho người dùng
 export const drawApi = {
-  draw: (name) => axios.post(`${API_BASE}/draw`, { name }),
+  draw: (data) => axios.post(`${API_BASE}/draw`, data), // gửi { name, deviceId }
 };
 
 // API cho admin

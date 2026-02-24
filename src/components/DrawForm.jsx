@@ -1,16 +1,27 @@
 // client/src/components/DrawForm.jsx
-import { useState } from 'react';
-import { drawApi } from '../utils/api';
-
+import { useState, useEffect } from 'react';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { drawApi } from '../utils/api'; // ←←← THÊM DÒNG NÀY
 export default function DrawForm({ onDrawSuccess }) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deviceId, setDeviceId] = useState(null);
+
+  // Lấy deviceId khi component mount
+  useEffect(() => {
+    const getDeviceId = async () => {
+      const fp = await FingerprintJS.load();
+      const result = await fp.get();
+      setDeviceId(result.visitorId); // visitorId là chuỗi hash duy nhất
+    };
+    getDeviceId();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Vui lòng nhập tên!');
+    if (!name.trim() || !deviceId) {
+      setError('Đang xác minh thiết bị...');
       return;
     }
 
@@ -18,10 +29,11 @@ export default function DrawForm({ onDrawSuccess }) {
     setError('');
 
     try {
-      const res = await drawApi.draw(name);
-      onDrawSuccess(res.data); // Gửi kết quả lên App
+      // Gửi cả name + deviceId lên backend
+      const res = await drawApi.draw({ name, deviceId });
+      onDrawSuccess(res.data);
     } catch (err) {
-      const msg = err.response?.data?.error || 'Có lỗi xảy ra, vui lòng thử lại!';
+      const msg = err.response?.data?.error || 'Lỗi kết nối!';
       setError(msg);
     } finally {
       setLoading(false);
